@@ -27,7 +27,7 @@ const sessionConfig = {
   }, 
   httpOnly: true, // don't let JS code access cookies. Browser extensions run JS code on your browser!
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,
   // Where do we store our sessions? defaults to server
   store: new KnexSessionStore({
     knex: db,
@@ -52,6 +52,8 @@ server.post("/api/register", (req, res) => {
 
   Users.addUser(user)
     .then(saved => {
+      console.log(saved)
+      req.session.user = saved.username;
       res.status(201).json(saved);
     })
     .catch(err => {
@@ -98,5 +100,17 @@ server.get("/api/users", restricted, (req, res) => {
       res.status(500).json({ message: "You shall not pass!" })
     });
 });
+
+server.get('/api/logout', restricted, (req, res) => {
+  if (req.session) {
+    req.session.destroy(err => {
+      if (err) {
+        res.json({message: "Failed to logout: ", err})
+      } else {
+        res.json({message: "Goodbye"})
+      }
+    })
+  }
+})
 
 module.exports = server;
