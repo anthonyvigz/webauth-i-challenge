@@ -5,26 +5,40 @@ const server = express();
 
 const bcrypt = require('bcrypt');
 const Users = require('./users/userModel');
+const db = require('./data/dbConfig')
+
 const restricted = require('./data/restricted.js')
 const helmet = require('helmet')
 const session = require('express-session');
+const connectSessionKnex = require('connect-session-knex')
 
 server.use(helmet())
 server.use(express.json()); 
 
-server.use(
-  session({
-    name: 'notsession', // default is connect.sid
-    secret: 'nobody tosses a dwarf!',
-    cookie: {
-      maxAge: 1 * 24 * 60 * 60 * 1000,
-      secure: true, // only set cookies over https. Server will not send back a cookie over http.
-    }, // 1 day in milliseconds
-    httpOnly: true, // don't let JS code access cookies. Browser extensions run JS code on your browser!
-    resave: false,
-    saveUninitialized: false,
+const KnexSessionStore = connectSessionKnex(session)
+
+const sessionConfig = {
+  name: "notsession", // default is connect.sid
+  // This should not be hardcoded. This should be in an env variable
+  secret: "secret",
+  cookie: {
+    maxAge: 1 * 24 * 60 * 60 * 1000, // 1 day in milliseconds
+    secure: false // set to TRUE in production -- only set cookies over https. Server will not send back a cookie over http.
+  }, 
+  httpOnly: true, // don't let JS code access cookies. Browser extensions run JS code on your browser!
+  resave: false,
+  saveUninitialized: false,
+  // Where do we store our sessions? defaults to server
+  store: new KnexSessionStore({
+    knex: db,
+    tablename: 'sessions',
+    sidfieldname: "sid",
+    createtable: true,
+    clearInterval: 1000 * 60 * 60 * 24 * 1
   })
-);
+};
+
+server.use(session(sessionConfig))
 
 server.get('/', (req, res) => {
     res.send(`<h2>Let's do this!</h2>`)
@@ -57,6 +71,7 @@ server.post('/api/login', async (req, res) => {
       console.log(user);
 
       if (user && bcrypt.compareSync(password, user[0].password)){
+          req.session.user = user;
           res.status(200).json({message:`Welcome user!`});
 
       }
