@@ -70,11 +70,9 @@ server.post('/api/login', async (req, res) => {
   try {
       const user = await Users.findBy( { username })
 
-      console.log(user);
-
       if (user && bcrypt.compareSync(password, user[0].password)){
-          req.session.user = user;
-          res.status(200).json({message:`Welcome user!`});
+          req.session.user = username;
+          res.status(200).json({message:`Welcome ${req.session.user}!`});
 
       }
       else {
@@ -101,13 +99,13 @@ server.get("/api/users", restricted, (req, res) => {
     });
 });
 
-server.get('/api/logout', restricted, (req, res) => {
+server.get('/api/logout', (req, res) => {
   if (req.session) {
     req.session.destroy(err => {
       if (err) {
         res.json({message: "Failed to logout: ", err})
       } else {
-        res.json({message: "Goodbye"})
+        res.json({message: `Goodbye ${req.session.user}`})
       }
     })
   }
